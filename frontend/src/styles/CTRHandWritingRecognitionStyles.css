@@ -1,0 +1,117 @@
+@import "edits.css";
+input[type="number"], input[type="text"] {
+    width: 150px;
+    max-width: 80%;
+    padding: 0.75em;
+    border-radius: 0.25em;
+}
+/* Makes sure the inputs are aligned */
+div.input-group, p {
+    display: flex;
+    margin: auto;
+    justify-content: space-between;
+    align-self: center;
+    /* border: solid 2px red; */
+}
+div.container, 
+div.bce-container {
+    display: flex;
+    margin: 0 10%;
+    /* min-width: fit-content; */
+    max-width: 100%;
+    min-height: fit-content;
+    /* justify-content: space-between; */
+    justify-items: center;
+    align-items: center;
+    flex-direction: column;
+    padding-top: 7%;
+}
+div.container {
+    /* border: 2px solid purple; */
+    height: 100vh;
+}
+div.bce-container {
+    /* border: 2px solid cornflowerblue; */
+    height: 100vh;
+}
+/* Just the ending results page */
+.bce-result {
+    border: solid 1px black;
+    background-color: lightgrey;
+    padding: 2%;
+    border-radius: 0.10em;
+    min-width: fit-content;
+    max-width: 100%;
+    min-height: fit-content;
+
+    justify-items: center;
+    align-self: center;
+    flex-direction: column;
+    margin: auto;
+}
+
+label, 
+.data-label {
+    font-size: 14px;
+    font-weight: bold;
+    text-align: left;
+    padding: 0.75em;
+    max-width: 50vw;
+    overflow-wrap: break-word;
+}
+/* same button stylings as for BC and CTR */
+.action-button,
+.submit-button, 
+.go-back-button {
+    display: block;
+    width: 200px;
+    padding: 15px;
+    border: 2px solid black;
+    background-color: white;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: auto;
+    align-self: center;
+    justify-self: center;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(128, 128, 128, 0.7); /* Gray semi-transparent */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(255, 255, 255, 0.5);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .error-message {
+    color: red;
+    margin-top: 20px;
+    text-align: center;
+  }
+  

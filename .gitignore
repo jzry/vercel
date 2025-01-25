@@ -1,0 +1,5 @@
+.DS_Store
+.vscode/
+Uploads/
+python_env/
+process.env
