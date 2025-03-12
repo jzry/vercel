@@ -1,0 +1,7 @@
+# Core dependencies
+-r core-requirements.txt
+
+
+opencv-python~=4.11.0.86
+matplotlib~=3.10.0
+termcolor~=2.5.0

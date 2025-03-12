@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from enum import Enum
+from enum import IntEnum
 import requests
 import json
 
@@ -32,6 +32,9 @@ class DigitGetter:
         blank_threshold (int): The max difference between the lightest and
                                darkest pixels in an image for it to be
                                considered a blank segment (default=120).
+        use_width_as_reference (bool): Use the image width instead of height
+                                       as a reference when identifying
+                                       handwriting segments (default=False).
     """
 
     def __init__(self, ts=False):
@@ -43,8 +46,10 @@ class DigitGetter:
 
             from .OkraHandler import OkraHandler
 
-            self.__model_handle = OkraHandler()
-            self.__model_handle.initialize()
+            self.__classifier_handle = OkraHandler()
+            self.__classifier_handle.initialize()
+
+        self.__tracer = OkraTracer()
 
         # Set default attributes
 
@@ -54,6 +59,7 @@ class DigitGetter:
         self.find_decimal_points = True
         self.find_minus_signs = False
         self.blank_threshold = 120
+        self.use_width_as_reference = False
 
 
     def __preprocess_image(self, img):
@@ -103,6 +109,9 @@ class DigitGetter:
         Returns:
             (int, float): A tuple with the digit's value and the confidence as
                           a percentage.
+
+        Raises:
+            OkraModelError: Failed to run a model.
         """
 
         try:
@@ -128,20 +137,7 @@ class DigitGetter:
 
         self.__show_debug_image(img, 'Digit')
 
-        req = {"data": img.tobytes(), "x": img.shape[1], "y": img.shape[0]}
-
-        if self.__debug:
-
-            res = self.__model_handle.handle(req)
-            body = json.loads(res[0])
-
-        else:
-
-            res = requests.post('http://localhost:6060/predictions/OkraClassifier', data=req)
-            body = res.json()
-
-            if res.status_code != 200:
-                raise OkraModelError('Torchserve error', body)
+        body = self.__send_to_model('OkraClassifier', img)
 
         return (body['Digit'], body['Confidence'])
 
@@ -156,6 +152,9 @@ class DigitGetter:
         Returns:
             (list(int), list(float)): A tuple with a list of digit values and
                                       a list of confidences as percentages.
+
+        Raises:
+            OkraModelError: Failed to run a model.
         """
 
         try:
@@ -179,15 +178,58 @@ class DigitGetter:
             if digit_pixel == None:
                 break
 
-            # Get the slice of the image containing the digit
-            segment, segment_type = self.__segment_digit(img, digit_pixel, scan_state)
+            # Get the slice of the image containing the handwriting
+            segment, segment_type = self.__get_segment(
+                img,
+                digit_pixel,
+                scan_state
+            )
 
             if segment_type == SegmentType.DIGIT:
 
-                # Classify the digit
-                num, conf = self.__digit_from_image(segment)
-                numbers.append(num)
-                confidence.append(conf)
+                self.__process_digit_segment(segment, numbers, confidence)
+
+            elif segment_type == SegmentType.DIGIT2:
+
+                print('OCR Digit Overlap Issue Detected! - Splitting into 2 digits')
+
+                one_half = segment.shape[1] // 2
+
+                self.__process_digit_segment(
+                    segment[:, :one_half],
+                    numbers,
+                    confidence
+                )
+
+                self.__process_digit_segment(
+                    segment[:, one_half:],
+                    numbers,
+                    confidence
+                )
+
+            elif segment_type == SegmentType.DIGIT3:
+
+                print('OCR Digit Overlap Issue Detected! - Splitting into 3 digits')
+
+                one_third = segment.shape[1] // 3
+
+                self.__process_digit_segment(
+                    segment[:, :one_third],
+                    numbers,
+                    confidence
+                )
+
+                self.__process_digit_segment(
+                    segment[:, one_third:one_third * 2],
+                    numbers,
+                    confidence
+                )
+
+                self.__process_digit_segment(
+                    segment[:, one_third * 2:],
+                    numbers,
+                    confidence
+                )
 
             elif segment_type == SegmentType.DECIMAL:
 
@@ -274,9 +316,9 @@ class DigitGetter:
         return None
 
 
-    def __segment_digit(self, img, start_pixel, scan_state):
+    def __get_segment(self, img, start_pixel, scan_state):
         """
-        Segments out a single digit from an image.
+        Segments out a piece of handwriting from an image.
 
         Parameters:
             img (numpy.ndarray): An image.
@@ -285,15 +327,20 @@ class DigitGetter:
                                scan between function calls.
 
         Returns:
-            numpy.ndarray: A slice of img containing a single character.
-            SegmentType: The type of character in the image segment.
+            numpy.ndarray: A slice of img containing handwriting.
+            SegmentType: The type of handwriting in the image segment.
         """
 
-        bounds = Boundary(start_pixel[1], start_pixel[0], start_pixel[1], start_pixel[0])
+        bounds = Boundary(
+            start_pixel[1],
+            start_pixel[0],
+            start_pixel[1],
+            start_pixel[0]
+        )
 
         # Find the actual boundary of the digit.
         # 'bounds' will be updated with the correct values.
-        self.__trace_digit(img, bounds, start_pixel, scan_state)
+        self.__tracer.trace(img, bounds, start_pixel, scan_state)
 
         # Update the scan state
         if bounds.bottom < img.shape[0] // 2:
@@ -310,198 +357,67 @@ class DigitGetter:
         else:
             scan_state['column'] = bounds.right + 1
 
-        # Figure out whats in this segment based on its size and shape
-        segment_type = self.__get_segment_type(bounds.shape(), img.shape)
 
         # Copy the box containing the digit from the image
-        digit_segment = bounds.get_slice(img)
+        segment = bounds.get_slice(img)
 
-        # Only apply padding if this is a digit
-        if segment_type == SegmentType.DIGIT:
-            digit_segment = self.__apply_padding(digit_segment)
+        # Determine what we just segmented out of the image
+        segment_type = self.__get_segment_type(segment, img.shape)
 
-        return digit_segment, segment_type
-
-
-    def __trace_digit(self, img, bounds, pixel, scan_state):
-        """
-        An edge tracing algorithm that finds the smallest box that fits a
-        digit.
-
-        Parameters:
-            img (numpy.ndarray): An image.
-            bounds (Boundary): The object to store the bounds of the digit.
-            pixel (int, int): The coordinate of the starting pixel.
-            scan_state (dict): A dictionary object to save the state of the
-                               scan between function calls.
-        """
-
-        def move(direction):
-
-            move_val = directions[direction % len(directions)]
-            return (current_pixel[0] + move_val[0], current_pixel[1] + move_val[1])
-
-        def is_white(location):
-
-            return img[location[1], location[0]] != 0
-
-        def update_bounds(location):
-
-            if location[0] > bounds.right:
-                bounds.right = location[0]
-            elif location[0] < bounds.left:
-                bounds.left = location[0]
-
-            if location[1] > bounds.bottom:
-                bounds.bottom = location[1]
-            elif location[1] < bounds.top:
-                bounds.top = location[1]
-
-        def update_layers(layers, direction, pixel):
-
-            # Track horizontal movement in each row of the image
-            direction %= len(directions)
-            if direction == 2 or direction == 6:
-                layers[pixel[1]] += 1
-
-        def adjust_bounds_to_line(layers):
-
-            # The max layer is either the top or bottom of the line.
-            # This will be the center index during the search for the other
-            # side of the line.
-            center_i = np.argmax(layers)
-
-            # The indices specifying the range to search
-            high_search_i = center_i - 5
-            low_search_i = bounds.bottom
-
-            # Find the max layer above the center index
-            high_i = high_search_i + np.argmax(layers[high_search_i:center_i])
-
-            # If the center index is at the bottom of the boundary, it is
-            # obviously the bottom of the line.
-            if center_i == bounds.bottom:
-                if layers[high_i] < 15:
-                    bounds.top = bounds.bottom - 1
-
-                else:
-                    bounds.top = high_i
-
-                return
-
-            # Find the max layer below the center index
-            low_i = center_i + 1 + np.argmax(layers[(center_i + 1):(low_search_i + 1)])
-
-            # The larger layer is the other side of the line
-            if layers[high_i] > layers[low_i]:
-                # high_i   is the top
-                # center_i is the bottom
-                bounds.top = high_i
-
-            else:
-                # center_i is the top
-                # low_i    is the bottom
-                bounds.top = center_i
-
-        def get_start_direction(direction):
-
-            direction = direction % len(directions)
-
-            if direction < 2:
-                return 6        # Left
-            elif direction < 4:
-                return 0        # Up
-            elif direction < 6:
-                return 2        # Right
-            else:
-                return 4        # Down
-
-        #                .         .                                                 .
-        #                |        /       __.      \       |        /      .__        \
-        #                                           '      '       '
-        directions = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]
-
-        # The traversable area within the image
-        img_bounds = Boundary(
-            scan_state['upper'][-1],
-            img.shape[1] - 1,
-            scan_state['lower'][-1] - 1,
-            0
-        )
-
-        # A list to track horizontal movement
-        layers = [0] * img.shape[0]
-
-        start_direction = 0    # Up
-        current_pixel = pixel
-
-        while True:
-            for next_direction in range(start_direction, start_direction + len(directions)):
-
-                next_pixel = move(next_direction)
-
-                if img_bounds.contains(next_pixel):
-                    if is_white(next_pixel):
-
-                        update_bounds(next_pixel)
-                        update_layers(layers, next_direction, next_pixel)
-                        start_direction = get_start_direction(next_direction)
-                        current_pixel = next_pixel
-                        break
-
-            if current_pixel == pixel:
-                break
-
-        #
-        # Before returning, check for the digit-touching-line issue
-        #
-
-        half = img.shape[0] // 2
-        line_threshold = img.shape[1] // 2.5
-
-        # There will be a significant ammount of horizontal movement in the
-        # bottom half of the image if there is a line
-        if max(layers[half:]) >= line_threshold:
-
-            # If the boundary extends above the middle of the image,
-            # there is likely digits touching the line
-            if bounds.top < half:
-
-                print('OCR Line Issue Detected!!!')
-                adjust_bounds_to_line(layers)
+        return segment, segment_type
 
 
-    def __get_segment_type(self, segment_shape, img_shape):
+    def __get_segment_type(self, segment, img_shape):
         """
         Determines the contents of a segment based on its size and shape.
 
         Parameters:
-            segment_shape (int, int): The shape of the segment.
+            segment (numpy.ndarray): The image segment.
             img_shape (int, int): The shape of the original image.
 
         Returns:
             SegmentType: The type of the segment.
         """
 
-        if img_shape[0] > img_shape[1]:
-            size_criteria = img_shape[0] // 2
+        height = segment.shape[0]
+        width = segment.shape[1]
+
+        if self.use_width_as_reference:
+
+            digit_min_height = img_shape[1] // 5.5
+            noise_max_size = img_shape[1] // 21
 
         else:
-            size_criteria = img_shape[0]
 
-        digit_min_height = size_criteria // 3
-        noise_max_size = size_criteria // 7
+            digit_min_height = img_shape[0] // 3
+            noise_max_size = img_shape[0] // 7
 
         # Is this tall enough to be a digit?
-        if segment_shape[0] >= digit_min_height:
-            return SegmentType.DIGIT
+        if height >= digit_min_height:
+
+            two_digit_factor = 1.4
+            three_digit_factor = 2.0
+
+            if width >= three_digit_factor * height:
+
+                return SegmentType.DIGIT3
+
+            elif width >= two_digit_factor * height:
+
+                return SegmentType.DIGIT2
+
+            else:
+                return SegmentType.DIGIT
 
         # Is this really small?
-        if segment_shape[0] < noise_max_size and segment_shape[1] < noise_max_size:
+        if height < noise_max_size and \
+           width < noise_max_size:
+
             return SegmentType.NOISE
 
         # Is this flat and long?
-        if segment_shape[1] >= segment_shape[0] * 1.75:
+        if width >= height * 2:
+
             return SegmentType.MINUS
 
         # It's probably a decimal if we reach here
@@ -531,11 +447,11 @@ class DigitGetter:
         dynamic_pad = (dynamic_padding, dynamic_padding)
         fixed_pad = (fixed_padding, fixed_padding)
 
-        # If the y dimension is smaller the x dimension
-        #     then use the dynamic pad on the y dimension (add more rows than columns)
+        # If the y dimension is smaller the x dimension, then use the dynamic
+        # pad on the y dimension (add more rows than columns).
         #
-        # If the x dimension is smaller the y dimension
-        #     then use the dynamic pad on the x dimension (add more columns than rows)
+        # If the x dimension is smaller the y dimension, then use the dynamic
+        # pad on the x dimension (add more columns than rows).
         #
         if (img.shape[0] <= img.shape[1]):
             img = np.pad(img, (dynamic_pad, fixed_pad))
@@ -543,6 +459,28 @@ class DigitGetter:
             img = np.pad(img, (fixed_pad, dynamic_pad))
 
         return img
+
+
+    def __process_digit_segment(self, digit_segment, numbers, confidence):
+        """
+        Applies padding to a digit segment and sends it to the image
+        classifier.
+
+        Parameters:
+            digit_segment (numpy.ndarray): An image segment containing a digit.
+            numbers (list(int)): The list where the image classifier's result
+                                 will be placed.
+            confidence (list(float)): The list where the image classifier's
+                                      confidence will be placed.
+        """
+
+        # Prepare the segment
+        digit_segment = self.__apply_padding(digit_segment)
+
+        # Classify the digit
+        num, conf = self.__digit_from_image(digit_segment)
+        numbers.append(num)
+        confidence.append(conf)
 
 
     def __get_decimal_confidence(self, segment_shape):
@@ -564,6 +502,54 @@ class DigitGetter:
         return percentage
 
 
+    def __send_to_model(self, model_name, img):
+        """
+        Sends an image to a machine learning model to be processed.
+
+        Parameters:
+            model_name (str): The name of the target model.
+            img (numpy.ndarray): The image to send to the model.
+
+        Returns:
+            dict: The model's results.
+
+        Raises:
+            OkraModelError: Failed to run a model.
+        """
+
+        payload = {"data": img.tobytes(), "x": img.shape[1], "y": img.shape[0]}
+
+        if self.__debug:
+
+            if model_name == 'OkraClassifier':
+
+                response = self.__classifier_handle.handle(payload)
+
+            else:
+                raise OkraModelError(f'Unkown model: "{model_name}"')
+
+            body = json.loads(response[0])
+
+        else:
+
+            try:
+                response = requests.post(
+                    f'http://localhost:6060/predictions/{model_name}',
+                    data=payload
+                )
+                body = response.json()
+
+                if response.status_code != 200:
+                    raise OkraModelError(
+                        f'TorchServe could not process the request: {body}'
+                    )
+
+            except requests.exceptions.ConnectionError as e:
+                raise OkraModelError(f'Unable to connect to TorchServe: {e}')
+
+        return body
+
+
     def __show_debug_image(self, img, title):
         """Helper function to display a matplotlib plot of an image"""
 
@@ -577,6 +563,285 @@ class DigitGetter:
 
                 else:
                     print('Warning: matplotlib is not configured')
+
+
+
+class OkraTracer:
+    """A class that contains the code for tracing handwriting"""
+
+    def __init__(self):
+
+        self.__directions = [
+            (0, -1),            # 0 - NORTH
+            (1, -1),            # 1 - NORTHEAST
+            (1, 0),             # 2 - EAST
+            (1, 1),             # 3 - SOUTHEAST
+            (0, 1),             # 4 - SOUTH
+            (-1, 1),            # 5 - SOUTHWEST
+            (-1, 0),            # 6 - WEST
+            (-1, -1)            # 7 - NORTHWEST
+        ]
+
+        self.__num_directions = len(self.__directions)
+
+
+    def trace(self, img, bounds, pixel, scan_state):
+        """
+        An edge tracing algorithm that finds the smallest box that fits a
+        piece of handwriting.
+
+        Parameters:
+            img (numpy.ndarray): An image.
+            bounds (Boundary): An object to store the bounds of the
+                               handwriting.
+            pixel (int, int): The coordinate of the starting pixel.
+            scan_state (dict): A dictionary object to save the state of the
+                               scan between function calls.
+        """
+
+        # The traversable area within the image
+        img_bounds = Boundary(
+            scan_state['upper'][-1],
+            img.shape[1] - 1,
+            scan_state['lower'][-1] - 1,
+            0
+        )
+
+        # A list to track horizontal movement during the trace
+        layers = [0] * img.shape[0]
+
+        start_direction = Direction.NORTH
+        current_pixel = pixel
+
+        while True:
+
+            rotation = range(
+                start_direction,
+                start_direction + self.__num_directions
+            )
+
+            for next_direction in rotation:
+
+                next_pixel = self.__move(next_direction, current_pixel)
+
+                if img_bounds.contains(next_pixel):
+                    if self.__is_white(next_pixel, img):
+
+                        self.__update_bounds(bounds, next_pixel)
+                        self.__update_layers(
+                            layers,
+                            next_direction,
+                            next_pixel
+                        )
+                        start_direction = self.__get_start_direction(
+                            next_direction
+                        )
+                        current_pixel = next_pixel
+                        break
+
+            # Check for complete loop
+            if current_pixel == pixel:
+                break
+
+        # Before returning, check for the digit-touching-line issue.
+        self.__check_for_line_issue(bounds, layers, img.shape)
+
+
+    def __move(self, direction, current_pixel):
+        """
+        Determines the pixel coordinate after moving.
+
+        Parameters:
+            direction (Direction): The direction relative to the current pixel
+                                   to move.
+            current_pixel (int, int): The pixel from which to move from.
+
+        Returns:
+            (int, int): The coordinate of the pixel moved to.
+        """
+
+        move_val = self.__directions[direction % self.__num_directions]
+        return (current_pixel[0] + move_val[0], current_pixel[1] + move_val[1])
+
+
+    def __is_white(self, location, img):
+        """
+        Returns False if the pixel at the location is black (background).
+        Returns True if the pixel at the location is white (handwriting).
+        """
+
+        return img[location[1], location[0]] != 0
+
+
+    def __update_bounds(self, bounds, location):
+        """Expands the boundary to contain the latest tracing location"""
+
+        if location[0] > bounds.right:
+            bounds.right = location[0]
+        elif location[0] < bounds.left:
+            bounds.left = location[0]
+
+        if location[1] > bounds.bottom:
+            bounds.bottom = location[1]
+        elif location[1] < bounds.top:
+            bounds.top = location[1]
+
+
+    def __update_layers(self, layers, direction, pixel):
+        """Tracks horizontal movement in each row of the image"""
+
+        direction %= self.__num_directions
+
+        if direction == Direction.EAST or direction == Direction.WEST:
+            layers[pixel[1]] += 1
+
+
+    def __get_start_direction(self, direction):
+        """
+        After each iteration of the tracing algorithm, the start direction for
+        the next iteration must be determined. This direction is chosen based
+        on the direction taken to reach the current pixel.
+
+        Parameters:
+            direction (Direction): The direction taken to reach the current
+                                   pixel.
+
+        Returns:
+            Direction: The starting direction for the next iteration of
+                       tracing.
+        """
+
+        direction %= self.__num_directions
+
+        if direction < Direction.EAST:
+            return Direction.WEST
+
+        elif direction < Direction.SOUTH:
+            return Direction.NORTH
+
+        elif direction < Direction.WEST:
+            return Direction.EAST
+
+        else:
+            return Direction.SOUTH
+
+
+    def __check_for_line_issue(self, bounds, layers, img_shape):
+        """
+        Checks for the number-touching-line issue and compensates for it. There
+        are two indicators of this issue:
+            1. The boundary extending from the top half into the bottom half.
+            2. A lot of horizontal movement (as indicated by the layers).
+
+        Parameters:
+            bounds (Boundary): The boundary that resulted from tracing. This
+                               boundary will be adjusted if the issue is found.
+            layers (list): The amount of horizontal movement per row that
+                           occured during tracing.
+            img_shape (int, int): The shape of the image segment.
+        """
+
+        half = img_shape[0] // 2
+        line_threshold = img_shape[1] // 3
+
+        # Check first condition
+        if bounds.top < half and bounds.bottom > half:
+
+            # Check second condition (top half)
+            if max(layers[:half]) >= line_threshold:
+
+                print('OCR Line Issue Detected! - Removing line from above')
+                self.__adjust_bounds_to_line(
+                    bounds,
+                    layers,
+                    bounds.top,
+                    half
+                )
+
+
+            # Check second condition (bottom half)
+            elif max(layers[half:]) >= line_threshold:
+
+                print('OCR Line Issue Detected! - Removing line from below')
+                self.__adjust_bounds_to_line(
+                    bounds,
+                    layers,
+                    half,
+                    bounds.bottom
+                )
+
+
+    def __adjust_bounds_to_line(self, bounds, layers, search_top, search_bottom):
+        """
+        Adjusts the boundary to cover only the line so the digits attached to
+        it can be traced in future iterations.
+
+        Parameters:
+            bounds (Boundary): The boundary of the traced line and digits. This
+                               boundary will be adjusted to fit the line.
+            layers (list): The amount of horizontal movement per row that
+                           occured during tracing.
+            search_top (int): The top index to use for the line search. Indices
+                              above this in the segment will be ingnored.
+            search_bottom (int): The bottom index to use for the line search.
+                                 Indices below this in the segment will be
+                                 ingnored.
+        """
+
+        search_range = slice(search_top, search_bottom + 1)
+
+        # The max layer is either the top or bottom of the line.
+        # This will be the center index during the search for the other
+        # side of the line.
+        center_i = np.argmax(layers[search_range]) + search_top
+
+        # If the center index is at the bottom of the boundary, it is
+        # obviously the bottom of the line.
+        if center_i == search_bottom:
+
+            search_range = slice(search_top, search_bottom)
+
+            high_i = search_top + np.argmax(layers[search_range])
+
+            if layers[high_i] < 15 or center_i - high_i > 4:
+                bounds.top = search_bottom - 1
+
+            else:
+                bounds.top = high_i
+
+        # Likewise, if the center index is at the boundary top, it is the
+        # top of the line.
+        elif center_i == search_top:
+
+            search_range = slice(search_top + 1, search_bottom + 1)
+
+            low_i = search_top + 1 + np.argmax(layers[search_range])
+
+            if layers[low_i] < 15 or low_i - center_i > 4:
+                bounds.bottom = search_top + 1
+
+            else:
+                bounds.bottom = low_i
+
+        # The center index is in the middle of the segment. We don't know
+        # if its the top or bottom of the line yet.
+        else:
+
+            above_search_range = slice(search_top, center_i)
+            below_search_range = slice(center_i + 1, search_bottom + 1)
+
+            high_i = search_top + np.argmax(layers[above_search_range])
+            low_i = center_i + 1 + np.argmax(layers[below_search_range])
+
+            # The larger layer is the other side of the line
+            if layers[high_i] > layers[low_i]:
+                bounds.top = high_i
+                bounds.bottom = center_i
+
+            else:
+                bounds.top = center_i
+                bounds.bottom = low_i
+
 
 
 class Boundary:
@@ -678,20 +943,39 @@ class Boundary:
         return False
 
 
-class SegmentType(Enum):
+
+class SegmentType(IntEnum):
     """
     An enumerated type to differentiate between digits, minus symbols,
     decimals, and noise.
 
     Values:
-        NOISE = 0   : A few disconnected pixels that should be ignored.
-        DIGIT = 1   : A digit that should be passed to the classifier.
-        MINUS = 2   : A minus symbol that will likely be ignored.
-        DECIMAL = 3 : A decimal point.
+        NOISE   = 0 : A few disconnected pixels that should be ignored.
+        MINUS   = 1 : A minus symbol that will likely be ignored.
+        DECIMAL = 2 : A decimal point.
+        DIGIT   = 3 : A single digit ready for the classifier.
+        DIGIT2  = 4 : Two digits that must be split before being classified.
+        DIGIT3  = 5 : Three digits that must be split before being classified.
     """
 
-    NOISE = 0
-    DIGIT = 1
-    MINUS = 2
-    DECIMAL = 3
+    NOISE   = 0
+    MINUS   = 1
+    DECIMAL = 2
+    DIGIT   = 3
+    DIGIT2  = 4
+    DIGIT3  = 5
+
+
+
+class Direction(IntEnum):
+    """An enumerated type to differentiate between different directions"""
+
+    NORTH     = 0
+    NORTHEAST = 1
+    EAST      = 2
+    SOUTHEAST = 3
+    SOUTH     = 4
+    SOUTHWEST = 5
+    WEST      = 6
+    NORTHWEST = 7
 

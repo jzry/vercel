@@ -34,7 +34,7 @@ function BCEResults({ extractedDataList, fastestRiderTime, heaviestRiderWeight }
   };
 
   return (
-    <div className="container">
+    <div className="result-container">
       {extractedDataList.map((data, index) => {
         const totalVeterinaryScore = calculateVeterinaryScore(data);
         const totalWeightScore = calculateWeightScore(parseInt(data['Weight of this rider'].value, 10));
@@ -42,15 +42,62 @@ function BCEResults({ extractedDataList, fastestRiderTime, heaviestRiderWeight }
 
         return (
           <div key={index} className="bce-result">
-            <h4>Rider number: {data['Rider number'].value}</h4>
-            <p>Total Veterinary Score: {totalVeterinaryScore}</p>
-            <p>Total Time Score: {totalTimeScore}</p>
-            <p>Total Weight Score: {totalWeightScore}</p>
-            <h3>Total Score: {totalVeterinaryScore + totalWeightScore + totalTimeScore}</h3>
+            <div className = "row-container">
+              <div class="row">
+                <div class="column left">
+                <h4>Rider number:</h4>
+                </div>
+                <div class="column right">
+                  <h4>{data['Rider number'].value}</h4>
+                </div>
+              </div>
+            </div>
+            <div className = "row-container">
+              <div class="row">
+                <div class="column left">
+                <p>Total Veterinary Score:</p>
+                </div>
+                <div class="column right">
+                  <p>{totalTimeScore}</p>
+                </div>
+              </div>
+            </div>
+            <div className = "row-container">
+              <div class="row">
+                <div class="column left">
+                  <p>Total Time Score:</p>
+                </div>              
+                <div class="column right">
+                  <p>{totalTimeScore}</p>
+                </div>
+              </div>
+            </div>
+            <div className = "row-container">
+              <div class="row">
+                <div class="column left">
+                  <p>Total Weight Score: </p>
+                </div>
+                <div class="column right">
+                  <p>{totalWeightScore}</p>
+                </div>
+              </div>
+            </div>
+            <div className = "row-container">
+              <div class="row">
+                <div class="column left">
+                  <p>Total Score:</p>
+                </div>
+                <div class="column right">
+                  <p>{totalVeterinaryScore + totalWeightScore + totalTimeScore}</p>
+                </div>
+              </div>
+            </div>
           </div>
         );
       })}
-      <button className="action-button" onClick={() => window.location.reload()}>Calculate New Score</button>
+      <div className="button-container">
+        <button className="action-button" onClick={() => window.location.reload()}>Calculate New Score</button>
+      </div>
     </div>
   );
 }

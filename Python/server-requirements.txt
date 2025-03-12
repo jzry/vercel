@@ -1,0 +1,13 @@
+# Core dependencies
+-r core-requirements.txt
+
+
+opencv-python-headless~=4.11.0.86
+pillow_heif~=0.21.0
+pdf2image~=1.17.0
+torch~=2.5.1 --index-url https://download.pytorch.org/whl/cpu
+torchvision~=0.20.1 --index-url https://download.pytorch.org/whl/cpu
+torchserve~=0.12.0
+torch-model-archiver~=0.12.0
+pyyaml~=6.0.2
+captum~=0.7.0

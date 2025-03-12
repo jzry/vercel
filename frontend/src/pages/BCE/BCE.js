@@ -38,64 +38,68 @@ function BCE() {
   };
 
   return (
-    <div className="bce-container">
-      {showGetPhotoBCE ? (
-        // Render GetPhotoBCE when user clicks continue
-        <GetPhotoBCE
-          numberOfRiders={parseInt(formData.numberOfRiders, 10)}
-          fastestRiderTime={formData.fastestRiderTime}
-          heaviestRiderWeight={parseFloat(formData.heaviestRiderWeight)}
-        />
-      ) : (
-        <>
-          <div className="input-group">
-            <label>Number of scorecards:</label>
-            <input
-              type="number"
-              value={formData.numberOfScorecards}
-              onChange={(e) => handleInputChange('numberOfScorecards', e)}
-            />
-          </div>
+    <>
+      <div className="bce-container">
+        {showGetPhotoBCE ? (
+          // Render GetPhotoBCE when user clicks continue
+          <GetPhotoBCE
+            numberOfScorecards={parseInt(formData.numberOfScorecards, 10)}
+            numberOfRiders={parseInt(formData.numberOfRiders, 10)}
+            fastestRiderTime={formData.fastestRiderTime}
+            heaviestRiderWeight={parseFloat(formData.heaviestRiderWeight)}
+          />
+        ) : (
+          <>
+            <div className="input-group">
+              <label>Number of scorecards:</label>
+              <input
+                type="number"
+                value={formData.numberOfScorecards}
+                onChange={(e) => handleInputChange('numberOfScorecards', e)}
+              />
+            </div>
 
-          <div className="input-group">
-            <label>Number of riders:</label>
-            <input
-              type="number"
-              value={formData.numberOfRiders}
-              onChange={(e) => handleInputChange('numberOfRiders', e)}
-            />
-          </div>
+            <div className="input-group">
+              <label>Number of riders:</label>
+              <input
+                type="number"
+                value={formData.numberOfRiders}
+                onChange={(e) => handleInputChange('numberOfRiders', e)}
+              />
+            </div>
 
-          <div className="input-group">
-            <label>Fastest rider time:</label>
-            <input
-              type="text"
-              placeholder="HMM" // Placeholder to indicate format
-              value={formData.fastestRiderTime}
-              onChange={(e) => handleInputChange('fastestRiderTime', e)}
-            />
-          </div>
+            <div className="input-group">
+              <label>Fastest rider time:</label>
+              <input
+                type="text"
+                placeholder="HMM" // Placeholder to indicate format
+                value={formData.fastestRiderTime}
+                onChange={(e) => handleInputChange('fastestRiderTime', e)}
+              />
+            </div>
 
-          <div className="input-group">
-            <label>Heaviest rider weight:</label>
-            <input
-              type="number"
-              value={formData.heaviestRiderWeight}
-              onChange={(e) => handleInputChange('heaviestRiderWeight', e)}
-            />
-          </div>
+            <div className="input-group">
+              <label>Heaviest rider weight:</label>
+              <input
+                type="number"
+                value={formData.heaviestRiderWeight}
+                onChange={(e) => handleInputChange('heaviestRiderWeight', e)}
+              />
+            </div>
 
-          <div className="button-container">
-            <button className="action-button" onClick={handleGoBack}>
-              Go back
-            </button>
-            <button className="action-button" onClick={handleContinue}>
-              Continue
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+            <div className="button-container">
+              <button className="action-button" onClick={handleGoBack}>
+                Go back
+              </button>
+              <button className="action-button" onClick={handleContinue}>
+                Continue
+              </button>
+            </div>
+
+          </>
+        )}
+      </div>
+    </>
   );
 }
 

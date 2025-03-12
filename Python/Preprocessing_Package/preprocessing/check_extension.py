@@ -1,22 +1,24 @@
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL.Image import DecompressionBombError
 import filetype
 from io import BytesIO
+from .exceptions import *
 
 try:
     from pdf2image import convert_from_bytes
     PDF_ENABLED = True
-except:
+
+except ImportError:
     PDF_ENABLED = False
 
 try:
     from pillow_heif import register_heif_opener
-
     # Register HEIF opener with Pillow
     register_heif_opener()
-
     HEIC_ENABLED = True
-except:
+
+except ImportError:
     HEIC_ENABLED = False
 
 
@@ -33,10 +35,9 @@ def check_extension(raw_image):
         np.ndarray : The pixel data loaded into a numpy array.
 
     Raises:
-        TypeError : Unable to determine file type
-        TypeError : File type is not supported
-        NotImplementedError : HEIC loading not configured
-        NotImplementedError : PDF loading not configured
+        PreprocessingExtensionError : Invalid or unknown file type.
+        PreprocessingImageError : Image is corrupted or incompatable.
+        NotImplementedError : HEIC or PDF loading not configured.
     """
 
     allowed_extensions = {'jpg', 'png', 'bmp', 'tif', 'pdf', 'heic'}
@@ -45,11 +46,11 @@ def check_extension(raw_image):
 
     # Check if the file extension was found
     if extension is None:
-        raise TypeError('Unable to determine file type')
+        raise PreprocessingExtensionError('Unable to determine file type')
 
     # Check if the file extension is in the allowed list
     if extension not in allowed_extensions:
-        raise TypeError('File type is not supported')
+        raise PreprocessingExtensionError('File type is not supported')
 
     # Make sure the heif package is available for heic images
     if extension == 'heic' and not HEIC_ENABLED:
@@ -73,12 +74,20 @@ def check_extension(raw_image):
 
     else:
 
-        # Decode the image with Pillow and return a numpy array
+        try:
+            # Decode the image with Pillow and return a numpy array
+            image = Image.open(BytesIO(raw_image))
 
-        image = Image.open(BytesIO(raw_image))
+        except DecompressionBombError:
+            raise PreprocessingImageError('Cannot open due to Decompression Bomb security concerns')
+
+        except UnidentifiedImageError:
+            raise PreprocessingImageError('Image file is corrupt')
+
+        except:
+            raise PreprocessingImageError('An unknown error occured while opening the image')
 
         ImageOps.exif_transpose(image, in_place=True)
-
         buffer = np.array(image, dtype=np.uint8)
 
         if buffer.shape[2] == 4:

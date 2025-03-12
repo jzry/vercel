@@ -1,64 +1,189 @@
-@import "edits.css";
-input[type="number"], input[type="text"] {
-    width: 150px;
-    max-width: 80%;
-    padding: 0.75em;
-    border-radius: 0.25em;
+/* Style for Labels */
+label, .data-label {
+    font-size: 16px;
+    font-weight: bold;
+    text-align: left;
+    padding: 10px 0;
+    width: 100%;
 }
+
+/* Styles the label and input field */
+div.input-group {
+  display: flex;
+  padding: 2%;
+  min-width: 100%;
+  justify-self: center;
+}
+
+/* Styles the scorefield segments */
+.crop > img {
+  padding: 5px;
+  width: 90px;
+  height: 50px;
+  object-fit: cover; /* Do not scale the image */
+  object-position: center; /* Center the image within the element */
+}
+
+/* Input Fields */
+input[type="number"], input[type="text"] {
+  width: 80%;
+  height: 45px;
+  max-width: 300px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 2px solid black;
+  font-size: 16px;
+  text-align: center;
+  background-color: white;
+  transition: 0.3s ease-in-out;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+input[type="number"]:focus, input[type="text"]:focus {
+  border-color: black;
+  outline: none;
+  box-shadow: 2px 2px 12px rgba(0, 0, 0, 0.2);
+}
+
 /* Makes sure the inputs are aligned */
 div.input-group, p {
     display: flex;
     margin: auto;
     justify-content: space-between;
     align-self: center;
-    /* border: solid 2px red; */
 }
+
+/* Wraps everything */
+.bce-container {
+  min-width: 50%;
+  max-width: max-content;
+  text-align: center;
+}
+
 div.container, 
 div.bce-container {
     display: flex;
     margin: 0 10%;
-    /* min-width: fit-content; */
-    max-width: 100%;
+    height: 100vh;
     min-height: fit-content;
-    /* justify-content: space-between; */
+    max-width: 100vw;
     justify-items: center;
     align-items: center;
     flex-direction: column;
-    padding-top: 7%;
+    padding-top: 5%;
+    padding-bottom: 3%;
 }
-div.container {
-    /* border: 2px solid purple; */
-    height: 100vh;
-}
-div.bce-container {
-    /* border: 2px solid cornflowerblue; */
-    height: 100vh;
-}
+
 /* Just the ending results page */
+.bce-results-container {
+  display: inline-block;
+  min-width: max-content;
+  max-width: max-content;
+  align-items: center;
+  text-align: center;
+  overflow-y: auto;
+  overflow-x: visible;
+}
+
+.result-container {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 300px;
+  max-width: 80%;
+  margin: 0 auto;
+  padding: 30px;
+  background: #ffffff;
+  border-radius: 12px;
+
+}
+
+/* Style for buttons */
+.result-container button {
+  width: 220px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  border: 2px solid black;
+  border-radius: 8px;
+  background: white;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.result-container button:hover {
+  background: black;
+  color: white;
+  border-color: black;
+}
+
+/* Individual rider scores */
 .bce-result {
-    border: solid 1px black;
-    background-color: lightgrey;
-    padding: 2%;
-    border-radius: 0.10em;
-    min-width: fit-content;
-    max-width: 100%;
-    min-height: fit-content;
+  display: inline-block;
+  justify-items: center;
+  align-self: center;
+  flex-direction: column;
+  padding: 5%;
+  padding-right: 3vh;
+  margin: 2vh;
+  width: max-content;
+  min-width: max-content;
+  max-width: 100%;
+  min-height: fit-content;
 
-    justify-items: center;
-    align-self: center;
-    flex-direction: column;
-    margin: auto;
+  border: solid 2px black;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+.row {
+  justify-content: space-between;
+  text-align: left;
+  text-wrap: nowrap;
 }
 
-label, 
-.data-label {
-    font-size: 14px;
-    font-weight: bold;
-    text-align: left;
-    padding: 0.75em;
-    max-width: 50vw;
-    overflow-wrap: break-word;
+.right {
+  min-width: min-content;
+  width: 8%;
+  margin-top: 0;
+  margin-left: 3%;
+  margin-right: 1%;
+  display: inline-block;
+  text-align: right;
+
 }
+
+.left {
+  width: 80%;
+  display: inline-block;
+  text-align: left;
+  text-wrap: balance;
+}
+
+.left > p {
+  align-content:left;
+  text-align: left;
+  justify-self: left;
+}
+
+/* For multi-buttons */
+div.button-container {
+  display: flex;
+  margin: auto;
+  padding: 1%;
+}
+
+/* For multi-buttons */
+div.button-container {
+  display: flex;
+  margin: auto;
+  padding: 1%;
+}
+
 /* same button stylings as for BC and CTR */
 .action-button,
 .submit-button, 
@@ -70,14 +195,49 @@ label,
     background-color: white;
     font-size: 18px;
     font-weight: bold;
-    text-align: center;
     cursor: pointer;
     transition: background-color 0.3s ease;
     margin: auto;
+    text-align: center;
     align-self: center;
     justify-self: center;
 }
 
+/* Text effects */
+h4,
+h2,
+h3,
+h1,
+p {
+  display: flex;
+  text-align: center;
+  min-width: fit-content;
+  justify-self: center;
+  margin: 5%;
+}
+
+/* For desktop */
+@media (min-width: 500px) {
+  .bce-container {
+    justify-content: center;
+    align-items: center;
+    width: 30vw;
+    max-height: fit-content;
+  }
+  #root {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+/* For mobile */
+@media (max-width: 480px) {
+  body {
+    margin-bottom: 5%;
+  }
+}
+
+/* Loading icon styling */
 .loading-overlay {
     position: fixed;
     top: 0;
@@ -115,3 +275,146 @@ label,
     text-align: center;
   }
   
+  .image-fullscreen {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  
+  .rotated {
+    transform: rotate(90deg);
+    max-width: 80vh; /* Adjust based on screen size */
+    max-height: 90vw;
+  }
+  
+  .action-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 10px;
+    gap: 10px;
+  }
+  
+  .container {
+    touch-action: none; /* Prevents scrolling on touch */
+}
+
+  /* Rotate */
+  .image-fullscreen-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    max-width: 100%;
+    height: 50vh;
+    max-height: 85vh;
+    padding: 0;
+    position: relative; /* Ensures proper layout */
+  }
+  
+  /* General Button Styling */
+  button {
+    width: 250px;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    border: 2px solid black;
+    border-radius: 8px;
+    background: white;
+    color: black;  /*   Ensures text color stays black */
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    -webkit-appearance: none; /*   Fix iOS default styling */
+    -moz-appearance: none;
+    appearance: none;
+  }
+  
+  /* Fix iPhone Blue Text Issue */
+  button:focus,
+  button:active {
+    color: black !important;  /*   Ensures text remains black */
+    background: white;
+    outline: none;
+    text-decoration: none; /*   Prevents text underline */
+  }
+  
+  /* Button Hover Effect */
+  button:hover {
+    background: black;
+    color: white;
+    border-color: black;
+  }
+  
+  /* Button Container (Aligning Buttons Properly) */
+  .button-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px; /*   Space between buttons */
+    margin-top: 30px;
+  }
+
+  .corner-button {
+    width: 220px;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    border: 2px solid black;
+    border-radius: 8px;  /*   Add rounded corners */
+    background: white;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-top: 10px;
+    text-align: center;
+    display: block;
+}
+
+.corner-button:hover {
+    background: black;
+    color: white;
+    border-color: black;
+}
+
+
+
+  /* Loading Icon!!! */
+  /*   Fullscreen dark overlay when loading */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8); /* Dark background */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/*   Animated loading spinner */
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid rgba(255, 255, 255, 0.3);
+  border-top: 6px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/*   Loading text showing percentage */
+.loading-text {
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 15px;
+}
+
+/*   Spinner animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

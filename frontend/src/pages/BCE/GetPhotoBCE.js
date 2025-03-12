@@ -1,79 +1,60 @@
 import React, { useState, useRef } from 'react';
 import UploadIcon from "../../images/upload.png";
 import BCEExtractedValues from './BCEExtractedValues';
+import Corners from '../Test/Corners.js';
 import '../../styles/CTRHandWritingRecognitionStyles.css';
 import axios from 'axios';
 
-function GetPhotoBCE({ numberOfRiders, fastestRiderTime, heaviestRiderWeight }) {
+function GetPhotoBCE({ numberOfScorecards, numberOfRiders, fastestRiderTime, heaviestRiderWeight }) {
   const [imageSrc1, setImageSrc1] = useState(null);
   const [imageSrc2, setImageSrc2] = useState(null);
   const [imageFile1, setImageFile1] = useState(null);
   const [imageFile2, setImageFile2] = useState(null);
   const [extractedDataList, setExtractedDataList] = useState([]);
   const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false); // Loading state
-  const [backendError, setBackendError] = useState(null); // Error state
-  const fileInputRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [backendError, setBackendError] = useState(null);
+  const [showCorners, setShowCorners] = useState(false);
   const apiUrl = process.env.REACT_APP_API_URL;
+  
+  const isTwoPhotosRequired = (numberOfRiders > 5 || numberOfScorecards > 1);
 
-  const isTwoPhotosRequired = numberOfRiders > 5;
+  const [isRotated1, setIsRotated1] = useState(false);
+  const [isRotated2, setIsRotated2] = useState(false);
+
+
+  // const handleFileChange = (event) => {
+  //   const file = event.target.files[0];
+  //   if (file) {
+  //     const imageUrl = URL.createObjectURL(file);
+  //     if (currentStep === 1) {
+  //       setImageSrc1(imageUrl);
+  //       setImageFile1(file);
+  //     } else {
+  //       setImageSrc2(imageUrl);
+  //       setImageFile2(file);
+  //     }
+  //   }
+  // };
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
       const imageUrl = URL.createObjectURL(file);
-      if (currentStep === 1) {
-        setImageSrc1(imageUrl);
-        setImageFile1(file);
-      } else {
-        setImageSrc2(imageUrl);
-        setImageFile2(file);
-      }
-    }
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    setBackendError(null);
-
-    const formData = new FormData();
-
-    if (imageFile1 && !imageFile2) {
-      formData.append('image', imageFile1);
-    } else if (imageFile2) {
-      formData.append('image', imageFile2);
-    } else {
-      console.error('No images available to submit');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await axios.post(apiUrl.concat('/bce'), formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      if (response.data.error) {
-        throw new Error(response.data.error);
-      }
-
-      let bceData = [...extractedDataList];
-      Object.keys(response.data).forEach((key) => {
-        if (bceData.length < numberOfRiders) {
-          bceData.push(response.data[key]);
+      const img = new Image();
+      img.src = imageUrl;
+      img.onload = () => {
+        const isLandscape = img.width > img.height;
+        if (currentStep === 1) {
+          setImageSrc1(imageUrl);
+          setImageFile1(file);
+          setIsRotated1(isLandscape);
+        } else {
+          setImageSrc2(imageUrl);
+          setImageFile2(file);
+          setIsRotated2(isLandscape);
         }
-      });
-
-      setExtractedDataList(bceData);
-
-      if (!isTwoPhotosRequired && currentStep === 1) {
-        setCurrentStep(3);
-      }
-    } catch (error) {
-      setBackendError(error.message || "An unknown error occurred.");
-    } finally {
-      setLoading(false);
+      };
     }
   };
 
@@ -88,20 +69,36 @@ function GetPhotoBCE({ numberOfRiders, fastestRiderTime, heaviestRiderWeight }) 
   };
 
   const handleContinue = () => {
-    if (isTwoPhotosRequired && currentStep === 1) {
-      setCurrentStep(2);
-    } else if (currentStep === 2) {
-      setCurrentStep(3);
-    }
+    setShowCorners(true);
   };
+  
 
-  const handleGoBackToUpload = () => {
-    setCurrentStep(1);
-    setImageSrc1(null);
-    setImageSrc2(null);
-    setImageFile1(null);
-    setImageFile2(null);
-  };
+  const handleCornersSubmit = (processedData) => {
+    // console.log("Raw Processed Data:", processedData);
+
+    // Check if processedData contains the correct structure
+    if (processedData && processedData.riderData) {
+        const riderDataArray = processedData.riderData; // Extracting array
+        console.log("Extracted Rider Data:", riderDataArray);
+
+        // Ensure it's an array before spreading
+        if (Array.isArray(riderDataArray)) {
+            setExtractedDataList((prevData) => [...prevData, ...riderDataArray]);
+        }
+    } else {
+        console.error("Unexpected processedData format:", processedData);
+    }
+
+    setShowCorners(false);
+
+    if (isTwoPhotosRequired && currentStep === 1) {
+        setCurrentStep(2);
+    } else {
+        setCurrentStep(3);
+    }
+};
+
+  
 
   return (
     <div className="App">
@@ -114,19 +111,24 @@ function GetPhotoBCE({ numberOfRiders, fastestRiderTime, heaviestRiderWeight }) 
         <div className="bce-results-container">
           <BCEExtractedValues
             extractedDataList={extractedDataList}
-            onGoBackToUpload={handleGoBackToUpload}
+            onGoBackToUpload={() => setCurrentStep(1)}
             heaviestRiderWeight={heaviestRiderWeight}
             fastestRiderTime={fastestRiderTime}
             numberOfRiders={numberOfRiders}
           />
         </div>
+      ) : showCorners ? (
+        <Corners
+          imageSrc={currentStep === 1 ? imageSrc1 : imageSrc2}
+          imageFile={currentStep === 1 ? imageFile1 : imageFile2}
+          onSubmitCorners={handleCornersSubmit}
+          mode={'bce'}
+        />
       ) : (
         <>
           {((currentStep === 1 && !imageSrc1) || (isTwoPhotosRequired && currentStep === 2 && !imageSrc2)) ? (
             <div className="button-container">
-              <h2>
-                {currentStep === 1 ? `Select Scorecard 1` : `Select Scorecard 2`}
-              </h2>
+              <h2>{currentStep === 1 ? `Upload Scorecard 1` : `Upload Scorecard 2`}</h2>
               <div className="icon-button">
                 <input
                   type="file"
@@ -142,17 +144,35 @@ function GetPhotoBCE({ numberOfRiders, fastestRiderTime, heaviestRiderWeight }) 
               </div>
             </div>
           ) : (
+            <>
             <div className="image-fullscreen-container">
-              <img src={currentStep === 1 ? imageSrc1 : imageSrc2} alt="Preview" className="image-fullscreen" />
-              <div className="action-buttons">
-                <button className="scorecard-button" onClick={handleRetakePhoto}>
-                  Retake Image
-                </button>
-                <button className="scorecard-button" onClick={(event) => { handleSubmit(event); handleContinue(); }}>
-                  {isTwoPhotosRequired && currentStep === 1 ? "Continue to Scorecard 2" : "Continue"}
-                </button>
-              </div>
+              <img
+                src={currentStep === 1 ? imageSrc1 : imageSrc2}
+                alt="Preview"
+                className={`image-fullscreen ${currentStep === 1 ? (isRotated1 ? "rotated" : "") : (isRotated2 ? "rotated" : "")}`}
+                style={{
+                  width: "95vw",  // 🔹 Fill most of the screen width
+                  height: "auto",  // 🔹 Maintain aspect ratio
+                  maxWidth: "100%",
+                  maxHeight: "80vh", // 🔹 Prevent going out of bounds
+                  objectFit: "contain",
+                  display: "block",
+                  margin: "0 auto 20px auto",  // 🔹 Adds space below the image
+                  borderRadius: "10px",
+                  boxShadow: "0px 4px 8px rgba(0,0,0,0.2)",
+                }}
+              />
             </div>
+
+            <div className="action-buttons">
+              <button className="scorecard-button" onClick={handleRetakePhoto}>
+                Retake Image
+              </button>
+              <button className="scorecard-button" onClick={handleContinue}>
+                {isTwoPhotosRequired && currentStep === 1 ? "Continue to Scorecard 2" : "Continue"}
+              </button>
+            </div>
+            </>
           )}
           {backendError && <div className="error-message">{backendError}</div>}
         </>

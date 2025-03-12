@@ -31,10 +31,15 @@ function BCEExtractedValues({ extractedDataList, onGoBackToUpload, heaviestRider
   };
 
   const getBorderColor = (confidence) => {
-    if (confidence > 90.0) return 'green';
-    if (confidence > 80.0) return 'yellow';
+    if (confidence >= 95.0) return 'green';
+    if (confidence >= 85.0) return 'yellow';
     return 'red';
   };
+
+  // concatenates the base64 string from the API with the needed info to read as an image
+  const newSrc = (source) => {
+    return "data:image;base64,"+source;
+  }
 
   // Determines the border color based on confidence level
   const handleCalculateScore = () => {
@@ -63,7 +68,6 @@ function BCEExtractedValues({ extractedDataList, onGoBackToUpload, heaviestRider
     }
   };
 
-  // adding in spinner here?
   if (showResults) {
     return <BCEResults extractedDataList={extractedDataList} fastestRiderTime={fastestRiderTime} heaviestRiderWeight={heaviestRiderWeight} />;
   } 
@@ -85,6 +89,9 @@ function BCEExtractedValues({ extractedDataList, onGoBackToUpload, heaviestRider
                   borderColor: getBorderColor(data[key].confidence),
                 }}
               />
+              <div className = "crop">
+                <img src={newSrc(data[key].image)} alt="segments"/>
+              </div>
             </div>
           ))}
           <div className="button-container">

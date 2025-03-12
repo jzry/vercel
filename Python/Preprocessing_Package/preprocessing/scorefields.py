@@ -4,8 +4,8 @@ import cv2 as cv
 import numpy as np
 from . import template
 from . import scoresheet
-# from . import horizontal_remover
 from .lime import BCAlignImage, CTRAlignImage
+from .check_extension import check_extension
 
 """
 Function Brief: Extracts and marks predefined segments (fields) for each rider section on an image.
@@ -16,9 +16,42 @@ Parameters:
 Returns:
     extracted_fields (dict): A dictionary containing the score fields from each rider from the BCE scoresheet.
 """
-def BCSegments(image):
+def BCSegments(image, corner_dict):
 
-    '''Just for the sake of verfiy the output
+    fileOutPath = "output/"
+    output_filename = "output_extraction.jpg"
+
+    corner_points = np.array([[pt['x'], pt['y']] for pt in corner_dict], dtype=np.float32)
+
+    # Compute the width and height of the new image
+    width_a = np.linalg.norm(corner_points[2] - corner_points[3])
+    width_b = np.linalg.norm(corner_points[1] - corner_points[0])
+    max_width = max(int(width_a), int(width_b))
+
+    height_a = np.linalg.norm(corner_points[1] - corner_points[2])
+    height_b = np.linalg.norm(corner_points[0] - corner_points[3])
+    max_height = max(int(height_a), int(height_b))
+
+    # Destination points
+    dst = np.array([
+        [0, 0],
+        [max_width - 1, 0],
+        [max_width - 1, max_height - 1],
+        [0, max_height - 1]
+    ], dtype="float32")
+
+    # Decode image
+    decoded_img = check_extension(image)
+
+    # Perspective transform
+    M = cv.getPerspectiveTransform(corner_points, dst)
+    warped_img = cv.warpPerspective(decoded_img, M, (max_width, max_height))
+
+    # Save the output image
+    if not cv.imwrite(output_filename, warped_img):
+        print(f"Error: Could not save output image: {fileOutPath + output_filename}")
+
+    '''Just for the sake of verifing the output
     -------------------------------------------'''
     output_folder='intermediary_fields'
     if not os.path.exists(output_folder):
@@ -30,10 +63,10 @@ def BCSegments(image):
     # imread() when image is file path
     # extracted_image = cv.imread(image)
     # Gives the extracted image that is warped to fit a rectangle.
-    extracted_image = scoresheet.Paper_Extraction(image)
+    # extracted_image = scoresheet.Paper_Extraction(warped_img)
 
     # Gives aligned image to the template
-    extracted_image = BCAlignImage(extracted_image)
+    extracted_image = BCAlignImage(warped_img)
 
     horizontal_scalefactor = 1
     vertical_scalefactor = 1
@@ -117,9 +150,42 @@ Parameters:
 Returns:
     extracted_fields (dict): A dictionary containing the score fields from the judge scoresheet.
 """
-def CTRSegments(image):
+def CTRSegments(image, corner_dict):
 
-    '''Just for the sake of verfiy the output
+    fileOutPath = "output/"
+    output_filename = "output_extraction.jpg"
+
+    corner_points = np.array([[pt['x'], pt['y']] for pt in corner_dict], dtype=np.float32)
+
+    # Compute the width and height of the new image
+    width_a = np.linalg.norm(corner_points[2] - corner_points[3])
+    width_b = np.linalg.norm(corner_points[1] - corner_points[0])
+    max_width = max(int(width_a), int(width_b))
+
+    height_a = np.linalg.norm(corner_points[1] - corner_points[2])
+    height_b = np.linalg.norm(corner_points[0] - corner_points[3])
+    max_height = max(int(height_a), int(height_b))
+
+    # Destination points
+    dst = np.array([
+        [0, 0],
+        [max_width - 1, 0],
+        [max_width - 1, max_height - 1],
+        [0, max_height - 1]
+    ], dtype="float32")
+
+    # Decode image
+    decoded_img = check_extension(image)
+
+    # Perspective transform
+    M = cv.getPerspectiveTransform(corner_points, dst)
+    warped_img = cv.warpPerspective(decoded_img, M, (max_width, max_height))
+
+    # Save the output image
+    if not cv.imwrite(output_filename, warped_img):
+        print(f"Error: Could not save output image: {fileOutPath + output_filename}")
+
+    '''Just for the sake of verifying the output
     -------------------------------------------'''
     output_folder='extracted_fields'
     if not os.path.exists(output_folder):
@@ -130,10 +196,10 @@ def CTRSegments(image):
 
     # imread() when image is file path
     # extracted_image = cv.imread(image)
-    extracted_image = scoresheet.Paper_Extraction(image)
+    # extracted_image = scoresheet.Paper_Extraction(image)
 
     # Gives aligned image to the template
-    extracted_image = CTRAlignImage(extracted_image)
+    extracted_image = CTRAlignImage(warped_img)
 
 
     horizontal_scalefactor = 1

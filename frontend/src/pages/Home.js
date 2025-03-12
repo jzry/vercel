@@ -12,6 +12,9 @@ function Home() {
         <Link to="/ctr">
           <button className="scorecard-button">CTR Scorecard</button>
         </Link>
+        {/* <Link to="/corners">
+          <button className="scorecard-button">Corner Selection</button>
+        </Link> */}
       </div>
     </div>
   );

@@ -1,9 +1,10 @@
 # Environment Variable Reference
 
-A comprehensive list of all environment variables that are used by this program.
-Not all of these are required to be set. Those that must be set will be labeled :exclamation:***Required***.
+A comprehensive list of all environment variables that are used by this web app.
+Not all of these are required to be set for development. The variables that must be set
+in order to run will be labeled :exclamation:***Required***.
 
-## File: `/process.env`
+## :page_facing_up: File: `/process.env`
 
 ### PORT
 
@@ -19,10 +20,8 @@ For a list of commonly used ports see
 
 :exclamation:***Required***
 
-This can be either `development` or `production`.
-If `development` is specified, then CORS security will be **disabled** and the React frontend will
-**not** be served statically from Express.
-If `production` is specified, then CORS security will be enabled and the React frontend will be
+This can be set to either `development` or `production`.
+If `production` is specified, the React frontend will be
 served statically from Express (Remember to run the frontend build script first!).
 
 ### PYTHON_CMD
@@ -32,7 +31,7 @@ Sets the string used to run Python. Depending on your system and configuration t
 
 ### PROTOCOL
 
-This can be either `http` or `https`. The default choice is `http`. If `https` is specified,
+This can be either `http` or `https`. The default value is `http`. If `https` is specified,
 a second Express server will be created using HTTP on port 80 that redirects traffic to the HTTPS
 server.
 
@@ -40,23 +39,29 @@ server.
 
 :exclamation:***Required if PROTOCOL is set to `https`***
 
-The path to a file containing an RSA key.
+The path to a file containing the private key of the SSL certificate.
 
 ### CERT_FILE
 
 :exclamation:***Required if PROTOCOL is set to `https`***
 
-The path to a file containing an SSL certificate.
+The path to a file containing the server certificate of the SSL certificate.
 
 ### TORCHSERVE
 
 To use TorchServe, set this to `torchserve`. TorchServe is not used by default.
 
-## File: `/frontend/.env`
+### ORIGIN
+
+The origin to use for CORS security. CORS will block requests that come from origins other
+than the one specified here. For example, this might be set to `https://stirup.co`.
+If this variable is ommitted, then CORS will allow requests from any origin (`*`).
+
+## :page_facing_up: File: `/frontend/.env`
 
 > [!IMPORTANT]
 > These variables should be up to date before performing a static build.
-> If any changes are made to this file after a build, you must rebuild the frontend to use the
+> If any changes are made to this file after a build, you must rebuild to use the
 > latest values.
 
 ### REACT_APP_API_URL

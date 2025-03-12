@@ -2,6 +2,7 @@ node_modules/
 extracted_fields/
 intermediary_fields/
 cert/
+__pycache__/
 outfield.jpg
 output_extraction.jpg
 example.jpg

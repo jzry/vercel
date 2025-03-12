@@ -1,21 +1,32 @@
 # Configuring Python
 
-Before running the Python code for this project
-you must set up a virtual python environment,
-install all dependencies, and install the custom
-packages in this folder.
+Before running this project, you must have the correct version of Python
+and all [PyPI](https://pypi.org/) dependencies installed.
 
-It is assumed that you have already installed Python
-on your system.
+## Install Python
 
-If you already have a virtual environment setup,
-you can skip that section.
+Python version 3.12 should be installed on your device.
+Python can be downloaded from the
+[official Python download page](https://www.python.org/downloads/).
 
-## Configuring Python Virtual Environment
+> [!IMPORTANT]
+> As of January 2025, PyTorch [does not support Python 3.13](https://pytorch.org/get-started/locally/#windows-python)
+> on all systems. If you install version 3.13, PyTorch may not work correctly!
 
-Open a terminal and navigate to the project's root directory `seniordesign`.
+To check your Python version, run the following command:
 
-Create a new virtual environment with the command:
+`python -V`
+
+> [!NOTE]
+> Depending on your system configuration and how you installed Python, the command
+> to run Python could be `python`, `python3`, or even `py`. To keep things simple,
+> the command `python` will be used in the following instructions.
+
+## Configuring A Python Virtual Environment
+
+Open a terminal and navigate to the project's root directory `seniordesign/`.
+Create a new [virtual environment](https://docs.python.org/3.12/library/venv.html)
+with the command:
 
 `python -m venv python_env`
 
@@ -28,7 +39,7 @@ you must first source it in your terminal:
     - In cmd.exe: `python_env\Scripts\activate.bat`
     - In Powershell: `python_env\Scripts\Activate.ps1`
 
-If you succeed, you will see the text `(python_env)` appear at the beginning
+If successful, you will see the text `(python_env)` appear at the beginning
 of the prompt line in your terminal.
 
 > [!IMPORTANT]
@@ -36,55 +47,37 @@ of the prompt line in your terminal.
 > start your terminal. Make sure `(python_env)` appears in your terminal
 > before running python or pip!
 
+To show the packages installed in your Python virtual environment run:
+
+`pip list -l`
+
 ## Installing Packages
 
-Install the main dependencies (opencv, numpy, matplotlib, filetype, termcolor)
-with the following command in a terminal:
+Navigate in your terminal to the directory `seniordesign/Python/`.
+Packages will be installed using [pip](https://pip.pypa.io/en/stable/).
 
-`pip install opencv-python numpy matplotlib filetype termcolor requests`
+### Developer Installation
 
-Optionally, you can support *.heic* or *.pdf* file types by installing
-these dependencies:
+`pip install -r dev-requirements.txt`
 
-`pip install pillow_heif`
+Also, install PyTorch using the command provided by
+[their website](https://pytorch.org/get-started/locally/).
+From the options on the linked page, select the following:
 
-`pip install pdf2image`
-
-Or if you're using python3 (numpy is installed along with opencv-python):
-`python3 -m pip install opencv-python matplotlib`
-
-To check that you have the correct packages installed in your python virtual environment do:
-`pip list -l` or `pip3 list -l` depending on which version of python you are using and installing with.
-
-[Install PyTorch](https://pytorch.org/get-started/locally/) using the
-command from their website. From the options on the linked page,
-select the following:
-- Stable 2.5.x
-- (Your operating system)
-- Pip
-- Python
-- CPU
+| PyTorch Build  | Your OS | Package | Language | Platform         |
+| -------------- | ------- | ------- | -------- | ---------------- |
+| `Stable (2.x)` | Your OS | `Pip`   | `Python` | `CPU` (see note) |
 
 > [!NOTE]
-> You can install a [CUDA version](https://en.wikipedia.org/wiki/CUDA#GPUs_supported)
-> of PyTorch if you want to use your GPU. For this project,
-> the CPU version is fine.
+> To run this project, only a CPU is needed, but if you would like to train a model, a
+> GPU is recommended. If you would like to use your GPU you can install a version of
+> PyTorch with the latest
+> [CUDA version that your GPU supports](https://en.wikipedia.org/wiki/CUDA#GPUs_supported).
 
-### Install Custom Packages
-
-Navigate in your terminal to the directory `seniordesign/Python`
-
-Run the following command to make an editable install of the `OCR` and `preprocessing`
-packages:
-
-`pip install -e OCR_Package -e Preprocessing_Package`
+### Server Installation
 
 > [!NOTE]
-> An editable install will allow you to edit the code in these packages without
-> having to reinstall them every time you make a change.
+> This method is for installation on a server running a Linux distro.
+> The correct version of PyTorch will automatically be installed.
 
-If you need to uninstall either of these packages:
-
-`pip uninstall OCR` or
-
-`pip uninstall preprocessing`
+`pip install -r server-requirements.txt`

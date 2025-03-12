@@ -15,8 +15,3 @@ class OkraBlankSegmentException(Exception):
 class OkraModelError(Exception):
     """Raised when the image classifier fails"""
 
-    def __init__(self, message, body):
-
-        super().__init__(message)
-        self.body = body
-

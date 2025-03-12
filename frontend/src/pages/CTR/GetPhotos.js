@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import UploadIcon from "../../images/upload.png";
 import CTRExtractedValues from './CTRExtractedValues.js';
+import Corners from '../Test/Corners.js';
 import '../../styles/CTRHandWritingRecognitionStyles.css';
 
 function GetPhotos() {
@@ -11,6 +12,7 @@ function GetPhotos() {
   const [extractedData, setExtractedData] = useState(null); // State to store extracted values from API
   const [loading, setLoading] = useState(false); // Loading state
   const [backendError, setBackendError] = useState(null); // Error state
+    const [showCorners, setShowCorners] = useState(false);
   const fileInputRef = useRef(null); 
   const navigate = useNavigate();
   const apiUrl = process.env.REACT_APP_API_URL;
@@ -69,6 +71,22 @@ function GetPhotos() {
     navigate('/'); // Redirect to the home page
   };
 
+  const handleContinue = () => {
+    setShowCorners(true);
+  };
+
+  const handleCornersSubmit = (processedData) => {
+    // console.log("Raw Processed Data:", processedData);
+
+    // Check if processedData contains the correct structure
+
+
+    setShowCorners(false);
+
+    setExtractedData(processedData)
+};
+
+
   return (
     <div className="App">
       {/* Show loading spinner */}
@@ -80,6 +98,13 @@ function GetPhotos() {
 
       {extractedData ? (
         <CTRExtractedValues extractedData={extractedData} />
+      ) : showCorners ? (
+        <Corners
+          imageSrc={imageSrc}
+          imageFile={imageFile}
+          onSubmitCorners={handleCornersSubmit}
+          mode={'ctr'}
+        />
       ) : (
         !imageSrc ? (
           <div className="button-container">
@@ -113,7 +138,7 @@ function GetPhotos() {
               <button className="scorecard-button" onClick={handleRetakePhoto}>
                 Retake Image
               </button>
-              <button className="scorecard-button" onClick={handleSubmit}>
+              <button className="scorecard-button" onClick={handleContinue}>
                 Continue
               </button>
             </div>

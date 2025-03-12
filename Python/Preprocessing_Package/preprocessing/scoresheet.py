@@ -12,15 +12,23 @@ Returns:
     warped_img (numpy.ndarray): The resulting image of the extracted and
     warped score sheet with sharp borders.
 """
-def Paper_Extraction(BC_scoresheet):
+def Paper_Extraction(image):
 
-    fileOutPath = "output/"
-    output_filename = "output_extraction.jpg"
+    # fileOutPath = "output/"
+    # output_filename = "output_extraction.jpg"
 
-    original_img = check_extension(BC_scoresheet)
+    original_img = check_extension(image)
     if original_img is None:
-        print(f"Cannot read image file: {BC_scoresheet}")
+        print(f"Cannot read image file: {image}")
         return -1
+
+    # Default corner points
+    corner_points = [
+        {"x": 50, "y": 50}, 
+        {"x": original_img.shape[1] - 50, "y": 50}, 
+        {"x": original_img.shape[1] - 50, "y": original_img.shape[0]- 50}, 
+        {"x": 50, "y": original_img.shape[0]- 50}
+        ]
 
     # Resize image for faster processing, maintaining aspect ratio
     max_dimension = 1000
@@ -55,10 +63,11 @@ def Paper_Extraction(BC_scoresheet):
             if area > 10000:  # Adjust the minimum area threshold as needed
                 document_contour = approx
                 break
-
+    
+    # Return defasult corner points if no contour is found
     if document_contour is None:
-        print("Error: Document contour not found")
-        return -1
+        print("Error: Document contour not found in scoresheet.py")
+        return {"corner_points": corner_points}
 
     # Map the points to the original image size
     inverse_scale = 1.0 / scale
@@ -79,26 +88,26 @@ def Paper_Extraction(BC_scoresheet):
 
     document_contour = reorder_points(document_contour)
 
-    # Compute the width and height of the new image
-    width_a = np.linalg.norm(document_contour[2] - document_contour[3])
-    width_b = np.linalg.norm(document_contour[1] - document_contour[0])
-    max_width = max(int(width_a), int(width_b))
+    # # Compute the width and height of the new image
+    # width_a = np.linalg.norm(document_contour[2] - document_contour[3])
+    # width_b = np.linalg.norm(document_contour[1] - document_contour[0])
+    # max_width = max(int(width_a), int(width_b))
 
-    height_a = np.linalg.norm(document_contour[1] - document_contour[2])
-    height_b = np.linalg.norm(document_contour[0] - document_contour[3])
-    max_height = max(int(height_a), int(height_b))
+    # height_a = np.linalg.norm(document_contour[1] - document_contour[2])
+    # height_b = np.linalg.norm(document_contour[0] - document_contour[3])
+    # max_height = max(int(height_a), int(height_b))
 
-    # Destination points
-    dst = np.array([
-        [0, 0],
-        [max_width - 1, 0],
-        [max_width - 1, max_height - 1],
-        [0, max_height - 1]
-    ], dtype="float32")
+    # # Destination points
+    # dst = np.array([
+    #     [0, 0],
+    #     [max_width - 1, 0],
+    #     [max_width - 1, max_height - 1],
+    #     [0, max_height - 1]
+    # ], dtype="float32")
 
-    # Perspective transform
-    M = cv.getPerspectiveTransform(document_contour, dst)
-    warped = cv.warpPerspective(original_img, M, (max_width, max_height))
+    # # Perspective transform
+    # M = cv.getPerspectiveTransform(document_contour, dst)
+    # warped = cv.warpPerspective(original_img, M, (max_width, max_height))
 
     # Convert to grayscale and apply adaptive threshold for mask
     # warped_gray = cv.cvtColor(warped, cv.COLOR_BGR2GRAY)
@@ -108,11 +117,14 @@ def Paper_Extraction(BC_scoresheet):
     # Apply mask to each channel of the original warped image to retain color
     # scanned = cv.bitwise_and(warped, warped, mask=mask)
 
-    # Save the output image
-    if not cv.imwrite(output_filename, warped):
-        print(f"Error: Could not save output image: {fileOutPath + output_filename}")
-        return -1
+    # # Save the output image
+    # if not cv.imwrite(output_filename, warped):
+    #     print(f"Error: Could not save output image: {fileOutPath + output_filename}")
+    #     return -1
+    
+    # Prepare corner points for return to Javascript corner adjusting file
+    corner_points = [{"x": int(pt[0]), "y": int(pt[1])} for pt in document_contour]
 
-    print(f"Success: Processing complete. Output saved to {fileOutPath + output_filename}!")
+    # print(f"Success: Processing complete. Output saved to {fileOutPath + output_filename}!")
 
-    return warped
+    return {"corner_points": corner_points}
