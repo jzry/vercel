@@ -3,7 +3,7 @@ import BCEResults from './BCEResults';
 import '../../styles/CTRHandWritingRecognitionStyles.css';
 
 // Displays and edits extracted data for each rider
-function BCEExtractedValues({ extractedDataList, onGoBackToUpload, heaviestRiderWeight, fastestRiderTime, numberOfRiders }) {
+function BCEExtractedValues({ extractedDataList, onGoBackToUpload }) {
   const [currentRiderIndex, setCurrentRiderIndex] = useState(0); // Index to track the current rider
   const [data, setData] = useState({ ...extractedDataList[currentRiderIndex] }); // Initialize with the first rider's data
   const [step, setStep] = useState(1); // Tracks the current step (1: edit, 2: go back/calculate, 3: show score)
@@ -32,10 +32,17 @@ function BCEExtractedValues({ extractedDataList, onGoBackToUpload, heaviestRider
 
   const getBorderColor = (confidence) => {
     if (confidence >= 95.0) return 'green';
-    if (confidence >= 85.0) return 'yellow';
+    if (confidence >= 85.0) return 'gold';
     return 'red';
   };
 
+  // Determines the border style based on confidence level
+  const getBorderStyle = (confidence) => {
+    if (confidence >= 95.0) return 'solid';
+    if (confidence >= 85.0) return 'dashed';
+    return 'dotted';
+  };
+  
   // concatenates the base64 string from the API with the needed info to read as an image
   const newSrc = (source) => {
     return "data:image;base64,"+source;
@@ -69,8 +76,8 @@ function BCEExtractedValues({ extractedDataList, onGoBackToUpload, heaviestRider
   };
 
   if (showResults) {
-    return <BCEResults extractedDataList={extractedDataList} fastestRiderTime={fastestRiderTime} heaviestRiderWeight={heaviestRiderWeight} />;
-  } 
+    return <BCEResults extractedDataList={extractedDataList} />;
+  }
 
 
   return (
@@ -87,6 +94,7 @@ function BCEExtractedValues({ extractedDataList, onGoBackToUpload, heaviestRider
                 onChange={(event) => handleInputChange(key, event)}
                 style={{
                   borderColor: getBorderColor(data[key].confidence),
+                  borderStyle: getBorderStyle(data[key].confidence),
                 }}
               />
               <div className = "crop">

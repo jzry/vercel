@@ -35,6 +35,10 @@ class DigitGetter:
         use_width_as_reference (bool): Use the image width instead of height
                                        as a reference when identifying
                                        handwriting segments (default=False).
+        scribble_threshold (float): The percentage of pixels in a segment that
+                                    have to be filled-in to be considered a
+                                    scribbled out number that should be ignored
+                                    (default=80.0).
     """
 
     def __init__(self, ts=False):
@@ -60,6 +64,7 @@ class DigitGetter:
         self.find_minus_signs = False
         self.blank_threshold = 120
         self.use_width_as_reference = False
+        self.scribble_threshold = 80.0
 
 
     def __preprocess_image(self, img):
@@ -142,12 +147,16 @@ class DigitGetter:
         return (body['Digit'], body['Confidence'])
 
 
-    def image_to_digits(self, img):
+    def image_to_digits(self, img, expected_digit_count=None):
         """
         Extracts a line of digits from an image.
 
         Parameters:
             img (numpy.ndarray): An image containing some digits.
+            expected_digit_count (int): The number of digits that are expected
+                                        to be in the image. This is to help
+                                        detect overlapping digits. By default,
+                                        this is disabled (Default=None).
 
         Returns:
             (list(int), list(float)): A tuple with a list of digit values and
@@ -155,6 +164,7 @@ class DigitGetter:
 
         Raises:
             OkraModelError: Failed to run a model.
+            TypeError: The expected digit count cannot be zero or negative.
         """
 
         try:
@@ -163,12 +173,11 @@ class DigitGetter:
         except OkraBlankSegmentException:
             return ([], [])
 
-        # The return values
-        numbers = []
-        confidence = []
-
         # A dictionary to save the state of the scan
         scan_state = {}
+
+        # A list to store all the segments extracted from the image
+        segments = []
 
         # Loop until the scan returns 'None'
         while True:
@@ -179,79 +188,71 @@ class DigitGetter:
                 break
 
             # Get the slice of the image containing the handwriting
-            segment, segment_type = self.__get_segment(
+            segment = self.__get_segment(
                 img,
                 digit_pixel,
                 scan_state
             )
 
-            if segment_type == SegmentType.DIGIT:
+            # Add this segment to the list
+            segments.append(segment)
 
-                self.__process_digit_segment(segment, numbers, confidence)
 
-            elif segment_type == SegmentType.DIGIT2:
+        # Check for overlapped digits
+        if expected_digit_count is not None:
+            if expected_digit_count <= 0:
+                raise TypeError(
+                    f'The expected digit count must be a postive integer. \
+                    Received: {expected_digit_count}'
+                )
 
-                print('OCR Digit Overlap Issue Detected! - Splitting into 2 digits')
+            is_digit = lambda x: x['type'] == SegmentType.DIGIT
 
-                one_half = segment.shape[1] // 2
+            number_of_digits = len(list(filter(is_digit, segments)))
+
+            while number_of_digits < expected_digit_count:
+
+                if not self.__split_digit(segments):
+                    break
+
+                number_of_digits += 1
+
+
+        # The return values
+        numbers = []
+        confidence = []
+
+        # Process all the segments found earlier
+        for segment in segments:
+
+            if segment['type'] == SegmentType.DIGIT:
 
                 self.__process_digit_segment(
-                    segment[:, :one_half],
+                    segment['img'],
                     numbers,
                     confidence
                 )
 
-                self.__process_digit_segment(
-                    segment[:, one_half:],
-                    numbers,
-                    confidence
-                )
-
-            elif segment_type == SegmentType.DIGIT3:
-
-                print('OCR Digit Overlap Issue Detected! - Splitting into 3 digits')
-
-                one_third = segment.shape[1] // 3
-
-                self.__process_digit_segment(
-                    segment[:, :one_third],
-                    numbers,
-                    confidence
-                )
-
-                self.__process_digit_segment(
-                    segment[:, one_third:one_third * 2],
-                    numbers,
-                    confidence
-                )
-
-                self.__process_digit_segment(
-                    segment[:, one_third * 2:],
-                    numbers,
-                    confidence
-                )
-
-            elif segment_type == SegmentType.DECIMAL:
+            elif segment['type'] == SegmentType.DECIMAL:
 
                 if self.find_decimal_points:
-                    conf = self.__get_decimal_confidence(segment.shape)
+                    conf = self.__get_decimal_confidence(segment['img'].shape)
                     numbers.append('.')
                     confidence.append(conf)
 
-                self.__show_debug_image(segment, 'Decimal Point')
+                self.__show_debug_image(segment['img'], 'Decimal Point')
 
-            elif segment_type == SegmentType.MINUS:
+            elif segment['type'] == SegmentType.MINUS:
 
                 if self.find_minus_signs:
-                    conf = 100.0 - self.__get_decimal_confidence(segment.shape)
+                    conf = self.__get_decimal_confidence(segment['img'].shape)
                     numbers.append('-')
-                    confidence.append(conf)
+                    confidence.append(100.0 - conf)
 
-                self.__show_debug_image(segment, 'Minus Symbol')
+                self.__show_debug_image(segment['img'], 'Minus Symbol')
 
             else:
-
-                self.__show_debug_image(segment, 'Ignored')
+                self.__show_debug_image(segment['img'], 'Ignored')
 
         return (numbers, confidence)
 
@@ -327,8 +328,9 @@ class DigitGetter:
                                scan between function calls.
 
         Returns:
-            numpy.ndarray: A slice of img containing handwriting.
-            SegmentType: The type of handwriting in the image segment.
+            dict: The segment and its type stored in a dictionary:
+                  'img' (numpy.ndarray): A slice of img containing handwriting.
+                  'type' (SegmentType): The type of handwriting in the segment.
         """
 
         bounds = Boundary(
@@ -364,7 +366,7 @@ class DigitGetter:
         # Determine what we just segmented out of the image
         segment_type = self.__get_segment_type(segment, img.shape)
 
-        return segment, segment_type
+        return {'img': segment, 'type': segment_type}
 
 
     def __get_segment_type(self, segment, img_shape):
@@ -395,19 +397,17 @@ class DigitGetter:
         # Is this tall enough to be a digit?
         if height >= digit_min_height:
 
-            two_digit_factor = 1.4
-            three_digit_factor = 2.0
+            # This might be a scribbled out digit
+            if height < width * 3:
 
-            if width >= three_digit_factor * height:
+                # Find the percentage of "filled-in" pixels
+                fill = 100 * np.count_nonzero(segment) / (width * height)
 
-                return SegmentType.DIGIT3
+                if fill > self.scribble_threshold:
+                    return SegmentType.NOISE
 
-            elif width >= two_digit_factor * height:
-
-                return SegmentType.DIGIT2
-
-            else:
-                return SegmentType.DIGIT
+            # Otherwise, this is just a regular digit
+            return SegmentType.DIGIT
 
         # Is this really small?
         if height < noise_max_size and \
@@ -422,6 +422,67 @@ class DigitGetter:
 
         # It's probably a decimal if we reach here
         return SegmentType.DECIMAL
+
+
+    def __split_digit(self, segments):
+        """
+        Splits the widest digit segment into halves. Assuming that overlapping-
+        digit segments will be wider than normal single digit segments, this
+        will seperate the overlapping digits into their own segments.
+
+        Parameters:
+            segments (list(dict)): All the segments extracted from the image.
+
+        Returns:
+            bool: True if a segment was split and False if no splittable
+                  segments are available.
+        """
+
+        index_of_widest = None
+
+        for i, segment in enumerate(segments):
+
+            if segment['type'] == SegmentType.DIGIT:
+
+                height, width = segment['img'].shape
+
+                if width >= height:
+
+                    if index_of_widest is not None:
+
+                        widest = segments[index_of_widest]['img'].shape[1]
+
+                        if width > widest:
+                            index_of_widest = i
+
+                    else:
+                        index_of_widest = i
+
+
+        if index_of_widest is not None:
+
+            print('OCR Digit-overlap Issue Detected! - Splitting segment')
+
+            segment = segments.pop(index_of_widest)['img']
+
+            half = segment.shape[1] // 2
+
+            left_half = segment[:, :half]
+            right_half = segment[:, half:]
+
+            segments.insert(
+                index_of_widest,
+                {'img': right_half, 'type': SegmentType.DIGIT}
+            )
+
+            segments.insert(
+                index_of_widest,
+                {'img': left_half, 'type': SegmentType.DIGIT}
+            )
+
+            return True
+
+        return False
 
 
     def __apply_padding(self, img):
@@ -496,10 +557,13 @@ class DigitGetter:
         """
 
         # Divide the smaller dimension by the larger dimension
-        # Multiply by 100 to convert to percentage
-        percentage = 100.0 * min(segment_shape) / max(segment_shape)
+        ratio = min(segment_shape) / max(segment_shape)
 
-        return percentage
+        # The higher the ratio, the higher the confidence.
+        # You may want to graph this to see what's going on
+        confidence = 1 - (ratio - 1)**2
+
+        return confidence * 100.0
 
 
     def __send_to_model(self, model_name, img):
@@ -953,17 +1017,13 @@ class SegmentType(IntEnum):
         NOISE   = 0 : A few disconnected pixels that should be ignored.
         MINUS   = 1 : A minus symbol that will likely be ignored.
         DECIMAL = 2 : A decimal point.
-        DIGIT   = 3 : A single digit ready for the classifier.
-        DIGIT2  = 4 : Two digits that must be split before being classified.
-        DIGIT3  = 5 : Three digits that must be split before being classified.
+        DIGIT   = 3 : A digit that needs to be classified.
     """
 
     NOISE   = 0
     MINUS   = 1
     DECIMAL = 2
     DIGIT   = 3
-    DIGIT2  = 4
-    DIGIT3  = 5
 
 
 

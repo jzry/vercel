@@ -83,8 +83,14 @@ def process_rider_fields(rider_segments, dg):
 
     for key_num, field_key in enumerate(field_keys):
 
+        if key_num >= 6:
+            number_length = 3
+
+        else:
+            number_length = None
+
         # Run the OCR
-        raw_out = dg.image_to_digits(rider_segments[field_key])
+        raw_out = dg.image_to_digits(rider_segments[field_key], number_length)
 
         # Use the appropriate validation
         #

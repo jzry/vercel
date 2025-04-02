@@ -5,7 +5,7 @@ import Corners from '../Test/Corners.js';
 import '../../styles/CTRHandWritingRecognitionStyles.css';
 import axios from 'axios';
 
-function GetPhotoBCE({ numberOfScorecards, numberOfRiders, fastestRiderTime, heaviestRiderWeight }) {
+function GetPhotoBCE({ numberOfScorecards }) {
   const [imageSrc1, setImageSrc1] = useState(null);
   const [imageSrc2, setImageSrc2] = useState(null);
   const [imageFile1, setImageFile1] = useState(null);
@@ -16,8 +16,8 @@ function GetPhotoBCE({ numberOfScorecards, numberOfRiders, fastestRiderTime, hea
   const [backendError, setBackendError] = useState(null);
   const [showCorners, setShowCorners] = useState(false);
   const apiUrl = process.env.REACT_APP_API_URL;
-  
-  const isTwoPhotosRequired = (numberOfRiders > 5 || numberOfScorecards > 1);
+
+  const isTwoPhotosRequired = (numberOfScorecards > 1);
 
   const [isRotated1, setIsRotated1] = useState(false);
   const [isRotated2, setIsRotated2] = useState(false);
@@ -71,7 +71,7 @@ function GetPhotoBCE({ numberOfScorecards, numberOfRiders, fastestRiderTime, hea
   const handleContinue = () => {
     setShowCorners(true);
   };
-  
+
 
   const handleCornersSubmit = (processedData) => {
     // console.log("Raw Processed Data:", processedData);
@@ -98,7 +98,7 @@ function GetPhotoBCE({ numberOfScorecards, numberOfRiders, fastestRiderTime, hea
     }
 };
 
-  
+
 
   return (
     <div className="App">
@@ -112,9 +112,6 @@ function GetPhotoBCE({ numberOfScorecards, numberOfRiders, fastestRiderTime, hea
           <BCEExtractedValues
             extractedDataList={extractedDataList}
             onGoBackToUpload={() => setCurrentStep(1)}
-            heaviestRiderWeight={heaviestRiderWeight}
-            fastestRiderTime={fastestRiderTime}
-            numberOfRiders={numberOfRiders}
           />
         </div>
       ) : showCorners ? (
@@ -150,17 +147,17 @@ function GetPhotoBCE({ numberOfScorecards, numberOfRiders, fastestRiderTime, hea
                 src={currentStep === 1 ? imageSrc1 : imageSrc2}
                 alt="Preview"
                 className={`image-fullscreen ${currentStep === 1 ? (isRotated1 ? "rotated" : "") : (isRotated2 ? "rotated" : "")}`}
-                style={{
-                  width: "95vw",  // 🔹 Fill most of the screen width
-                  height: "auto",  // 🔹 Maintain aspect ratio
-                  maxWidth: "100%",
-                  maxHeight: "80vh", // 🔹 Prevent going out of bounds
-                  objectFit: "contain",
-                  display: "block",
-                  margin: "0 auto 20px auto",  // 🔹 Adds space below the image
-                  borderRadius: "10px",
-                  boxShadow: "0px 4px 8px rgba(0,0,0,0.2)",
-                }}
+                // style={{
+                //   width: "95vw",  // 🔹 Fill most of the screen width
+                //   height: "auto",  // 🔹 Maintain aspect ratio
+                //   maxWidth: "100%",
+                //   maxHeight: "80vh", // 🔹 Prevent going out of bounds
+                //   objectFit: "contain",
+                //   display: "block",
+                //   margin: "0 auto 20px auto",  // 🔹 Adds space below the image
+                //   borderRadius: "10px",
+                //   boxShadow: "0px 4px 8px rgba(0,0,0,0.2)",
+                // }}
               />
             </div>
 

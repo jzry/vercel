@@ -8,9 +8,6 @@ function BCE() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     numberOfScorecards: '',
-    numberOfRiders: '',
-    fastestRiderTime: '',
-    heaviestRiderWeight: '',
   });
 
   const [showGetPhotoBCE, setShowGetPhotoBCE] = useState(false);
@@ -30,7 +27,7 @@ function BCE() {
 
   // Validates form and navigates to photo upload step
   const handleContinue = () => {
-    if (formData.numberOfRiders && formData.heaviestRiderWeight && formData.fastestRiderTime) {
+    if (formData.numberOfScorecards) {
       setShowGetPhotoBCE(true);
     } else {
       alert('Please fill in all fields before continuing.');
@@ -44,9 +41,6 @@ function BCE() {
           // Render GetPhotoBCE when user clicks continue
           <GetPhotoBCE
             numberOfScorecards={parseInt(formData.numberOfScorecards, 10)}
-            numberOfRiders={parseInt(formData.numberOfRiders, 10)}
-            fastestRiderTime={formData.fastestRiderTime}
-            heaviestRiderWeight={parseFloat(formData.heaviestRiderWeight)}
           />
         ) : (
           <>
@@ -56,34 +50,6 @@ function BCE() {
                 type="number"
                 value={formData.numberOfScorecards}
                 onChange={(e) => handleInputChange('numberOfScorecards', e)}
-              />
-            </div>
-
-            <div className="input-group">
-              <label>Number of riders:</label>
-              <input
-                type="number"
-                value={formData.numberOfRiders}
-                onChange={(e) => handleInputChange('numberOfRiders', e)}
-              />
-            </div>
-
-            <div className="input-group">
-              <label>Fastest rider time:</label>
-              <input
-                type="text"
-                placeholder="HMM" // Placeholder to indicate format
-                value={formData.fastestRiderTime}
-                onChange={(e) => handleInputChange('fastestRiderTime', e)}
-              />
-            </div>
-
-            <div className="input-group">
-              <label>Heaviest rider weight:</label>
-              <input
-                type="number"
-                value={formData.heaviestRiderWeight}
-                onChange={(e) => handleInputChange('heaviestRiderWeight', e)}
               />
             </div>
 

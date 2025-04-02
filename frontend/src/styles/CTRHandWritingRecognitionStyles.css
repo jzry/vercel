@@ -81,10 +81,14 @@ div.bce-container {
   max-width: max-content;
   align-items: center;
   text-align: center;
-  overflow-y: auto;
+  overflow-y: visible;
   overflow-x: visible;
 }
 
+/* Makes sure that the editable fields can scroll */
+.bce-results-container .container {
+  touch-action: manipulation;
+}
 .result-container {
   font-size: 20px;
   font-weight: bold;
@@ -130,7 +134,7 @@ div.bce-container {
   flex-direction: column;
   padding: 5%;
   padding-right: 3vh;
-  margin: 2vh;
+  margin: 1vh;
   width: max-content;
   min-width: max-content;
   max-width: 100%;
@@ -139,6 +143,11 @@ div.bce-container {
   border: solid 2px black;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
+}
+
+.bce-result p, .bce-result h4 {
+  padding: 3px;
+  margin: 0;
 }
 .row {
   justify-content: space-between;
@@ -217,7 +226,7 @@ p {
 }
 
 /* For desktop */
-@media (min-width: 500px) {
+@media (min-width: 480px) {
   .bce-container {
     justify-content: center;
     align-items: center;
@@ -228,6 +237,18 @@ p {
     display: flex;
     justify-content: center;
     align-items: center;
+  }
+
+  .image-fullscreen-container, .image-fullscreen{
+    height: 30vh;
+    max-height: 60vh;
+  }
+  .image-fullscreen.rotated {
+    width: inherit;
+    max-width: 35vw;
+    height: inherit;
+    max-height: 60vh;
+    margin-bottom: 10%;
   }
 }
 /* For mobile */
@@ -277,15 +298,22 @@ p {
   
   .image-fullscreen {
     max-width: 100%;
-    max-height: 100%;
+    width: 95vw;
+    height: auto;
+    max-height: 80vh;
     object-fit: contain;
+    display: block;
+    margin: 20px auto 20px auto;
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
   }
   
-  .rotated {
+  /* Controls rotation of preview photo */
+  /* .rotated {
     transform: rotate(90deg);
-    max-width: 80vh; /* Adjust based on screen size */
+    max-width: 80vh; 
     max-height: 90vw;
-  }
+  } */
   
   .action-buttons {
     display: flex;
@@ -295,14 +323,13 @@ p {
     gap: 10px;
   }
   
-  .container {
-    touch-action: none; /* Prevents scrolling on touch */
-}
+  .drag-container {
+    touch-action: none; /* Prevents scrolling on touch for canvas*/
+  }
 
   /* Rotate */
   .image-fullscreen-container {
     display: flex;
-    justify-content: center;
     align-items: center;
     width: 100vw;
     max-width: 100%;

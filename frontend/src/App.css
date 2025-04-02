@@ -10,7 +10,6 @@ body {
 
 .App {
   display: flex;
-  justify-content: center;
   align-items: center;
   height: 100vh;
   background-color: white;
@@ -71,7 +70,6 @@ body {
 .image-fullscreen-container {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   width: 100vw;
   height: 100vh;
